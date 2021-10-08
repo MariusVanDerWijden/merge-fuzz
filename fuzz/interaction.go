@@ -1,6 +1,7 @@
 package fuzz
 
 import (
+	"bytes"
 	"fmt"
 
 	"github.com/ethereum/go-ethereum/common"
@@ -44,6 +45,15 @@ func FuzzInteraction(input []byte) int {
 	err = engine.ConsensusValidated(catalyst.ConsensusValidatedParams{BlockHash: payload.BlockHash, Status: catalyst.VALID.Status})
 	if err != nil {
 		panic(err)
+	}
+	err = engine.ForkchoiceUpdated(catalyst.ForkChoiceParams{HeadBlockHash: payload.BlockHash, FinalizedBlockHash: common.Hash{}})
+	if err != nil {
+		panic(err)
+	}
+	// check that head is updated
+	newHead := engine.GetHead()
+	if !bytes.Equal(newHead[:], payload.BlockHash[:]) {
+		panic(fmt.Errorf("invalid head: got %v want %v", newHead, payload.BlockHash))
 	}
 	return 0
 }
