@@ -12,5 +12,5 @@ type Engine interface {
 	ExecutePayload(params catalyst.ExecutableData) (catalyst.GenericStringResponse, error)
 	ConsensusValidated(params catalyst.ConsensusValidatedParams) error
 	ForkchoiceUpdated(params catalyst.ForkChoiceParams) error
-	GetHead() common.Hash
+	GetHead() (common.Hash, error)
 }

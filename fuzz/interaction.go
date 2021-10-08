@@ -19,7 +19,10 @@ func FuzzInteraction(input []byte) int {
 	)
 	// TODO set valid parent hash
 	// fuzzer.Fuzz(&parentHash)
-	parentHash := engine.GetHead()
+	parentHash, err := engine.GetHead()
+	if err != nil {
+		panic(err)
+	}
 	fuzzer.Fuzz(&timestamp)
 	fuzzer.Fuzz(&random)
 	fuzzer.Fuzz(&feeRecipient)
@@ -51,7 +54,10 @@ func FuzzInteraction(input []byte) int {
 		panic(err)
 	}
 	// check that head is updated
-	newHead := engine.GetHead()
+	newHead, err := engine.GetHead()
+	if err != nil {
+		panic(err)
+	}
 	if !bytes.Equal(newHead[:], payload.BlockHash[:]) {
 		panic(fmt.Errorf("invalid head: got %v want %v", newHead, payload.BlockHash))
 	}

@@ -12,7 +12,8 @@ type RPCnode struct {
 	node *rpc.Client
 }
 
-func newRpcNode(url string) (*RPCnode, error) {
+func NewRPCNode(url string, startNode func()) (*RPCnode, error) {
+	startNode()
 	node, err := rpc.Dial(url)
 	return &RPCnode{node: node}, err
 }
@@ -45,7 +46,7 @@ func (n *RPCnode) ForkchoiceUpdated(params catalyst.ForkChoiceParams) error {
 
 func (n *RPCnode) GetHead() (common.Hash, error) {
 	var head *types.Header
-	err := n.node.Call(&head, "eth_getBlockByNumber", "latest")
+	err := n.node.Call(&head, "eth_getBlockByNumber", "latest", false)
 	if err != nil {
 		return common.Hash{}, err
 	}
