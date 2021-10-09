@@ -8,10 +8,14 @@ import (
 	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/ethereum/go-ethereum/eth/catalyst"
 	fuzz "github.com/google/gofuzz"
+	"github.com/mariusvanderwijden/merge-fuzz/merge"
 )
 
 func FuzzInteraction(input []byte) int {
-	fuzzer := fuzz.NewFromGoFuzz(input)
+	return fuzzInteraction(fuzz.NewFromGoFuzz(input), engineA)
+}
+
+func fuzzInteraction(fuzzer *fuzz.Fuzzer, engine merge.Engine) int {
 	var (
 		timestamp    uint64
 		random       [32]byte

@@ -12,14 +12,56 @@ import (
 	"github.com/mariusvanderwijden/merge-fuzz/merge"
 )
 
-var engine merge.Engine
+var engineA merge.Engine
+var engineB merge.Engine
 
 func init() {
-	engine = merge.GethRPCEngine //merge.NewGethNode()
+	engineA = merge.GethRPCEngine //merge.NewGethNode()
+	engineB = merge.GethRPCEngine
 }
 
 func FuzzPreparePayload(input []byte) int {
-	fuzzer := fuzz.NewFromGoFuzz(input)
+	return fuzzPreparePayload(fuzz.NewFromGoFuzz(input), engineA)
+}
+
+func FuzzGetPayload(input []byte) int { return fuzzGetPayload(fuzz.NewFromGoFuzz(input), engineA) }
+
+func FuzzExecutePayload(input []byte) int {
+	return fuzzExecutePayload(fuzz.NewFromGoFuzz(input), engineA)
+}
+
+func FuzzConsensusValidated(input []byte) int {
+	return fuzzConsensusValidated(fuzz.NewFromGoFuzz(input), engineA)
+}
+
+func FuzzForkchoiceUpdated(input []byte) int {
+	return fuzzForkchoiceUpdated(fuzz.NewFromGoFuzz(input), engineA)
+}
+
+func FuzzRandom(input []byte) int { return fuzzRandom(fuzz.NewFromGoFuzz(input), engineA) }
+
+func fuzzRandom(fuzzer *fuzz.Fuzzer, engine merge.Engine) int {
+	var strategy byte
+	fuzzer.Fuzz(&strategy)
+	switch strategy % 6 {
+	case 0:
+		return fuzzPreparePayload(fuzzer, engine)
+	case 1:
+		return fuzzGetPayload(fuzzer, engine)
+	case 2:
+		return fuzzExecutePayload(fuzzer, engine)
+	case 3:
+		return fuzzConsensusValidated(fuzzer, engine)
+	case 4:
+		return fuzzForkchoiceUpdated(fuzzer, engine)
+	case 5:
+		return fuzzInteraction(fuzzer, engine)
+	default:
+		panic("asdf")
+	}
+}
+
+func fuzzPreparePayload(fuzzer *fuzz.Fuzzer, engine merge.Engine) int {
 	var (
 		parentHash   common.Hash
 		timestamp    uint64
@@ -41,8 +83,7 @@ func FuzzPreparePayload(input []byte) int {
 	return 0
 }
 
-func FuzzGetPayload(input []byte) int {
-	fuzzer := fuzz.NewFromGoFuzz(input)
+func fuzzGetPayload(fuzzer *fuzz.Fuzzer, engine merge.Engine) int {
 	var payloadID uint64
 	fuzzer.Fuzz(&payloadID)
 	payload, err := engine.GetPayload(hexutil.Uint64(payloadID))
@@ -53,8 +94,7 @@ func FuzzGetPayload(input []byte) int {
 	return 1
 }
 
-func FuzzExecutePayload(input []byte) int {
-	fuzzer := fuzz.NewFromGoFuzz(input)
+func fuzzExecutePayload(fuzzer *fuzz.Fuzzer, engine merge.Engine) int {
 	payload := fillExecPayload(fuzzer)
 	_, err := engine.ExecutePayload(payload)
 	if err != nil {
@@ -63,8 +103,7 @@ func FuzzExecutePayload(input []byte) int {
 	return 0
 }
 
-func FuzzConsensusValidated(input []byte) int {
-	fuzzer := fuzz.NewFromGoFuzz(input)
+func fuzzConsensusValidated(fuzzer *fuzz.Fuzzer, engine merge.Engine) int {
 	var blockhash common.Hash
 	fuzzer.Fuzz(&blockhash)
 	err := engine.ConsensusValidated(catalyst.ConsensusValidatedParams{BlockHash: blockhash})
@@ -74,8 +113,7 @@ func FuzzConsensusValidated(input []byte) int {
 	return 0
 }
 
-func FuzzForkchoiceUpdated(input []byte) int {
-	fuzzer := fuzz.NewFromGoFuzz(input)
+func fuzzForkchoiceUpdated(fuzzer *fuzz.Fuzzer, engine merge.Engine) int {
 	var (
 		headBlockHash      common.Hash
 		finalizedBlockHash common.Hash
