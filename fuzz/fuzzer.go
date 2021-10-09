@@ -1,9 +1,13 @@
 package fuzz
 
 import (
+	"math/big"
+
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/hexutil"
+	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/eth/catalyst"
+	"github.com/ethereum/go-ethereum/trie"
 	fuzz "github.com/google/gofuzz"
 	"github.com/mariusvanderwijden/merge-fuzz/merge"
 )
@@ -22,8 +26,13 @@ func FuzzPreparePayload(input []byte) int {
 		random       [32]byte
 		feeRecipient common.Address
 		payloadID    uint64
+		realHash     bool
 	)
 	fuzzer.Fuzz(&parentHash)
+	fuzzer.Fuzz(&realHash)
+	if realHash {
+		parentHash, _ = engine.GetHead()
+	}
 	fuzzer.Fuzz(&timestamp)
 	fuzzer.Fuzz(&random)
 	fuzzer.Fuzz(&feeRecipient)
@@ -81,7 +90,36 @@ func FuzzForkchoiceUpdated(input []byte) int {
 }
 
 func fillExecPayload(fuzzer *fuzz.Fuzzer) catalyst.ExecutableData {
-	var payload catalyst.ExecutableData
+	var (
+		payload  catalyst.ExecutableData
+		realHash bool
+		basefee  int64
+	)
 	fuzzer.Fuzz(&payload)
+	fuzzer.Fuzz(&realHash)
+	if realHash {
+		txs := types.Transactions{}
+		fuzzer.Fuzz(&basefee)
+		baseFeePerGas := big.NewInt(basefee)
+		header := &types.Header{
+			ParentHash:  payload.ParentHash,
+			UncleHash:   types.EmptyUncleHash,
+			Coinbase:    payload.Coinbase,
+			Root:        payload.StateRoot,
+			TxHash:      types.DeriveSha(types.Transactions(txs), trie.NewStackTrie(nil)),
+			ReceiptHash: payload.ReceiptRoot,
+			Bloom:       types.BytesToBloom(payload.LogsBloom),
+			Difficulty:  common.Big0,
+			Number:      big.NewInt(int64(payload.Number)),
+			GasLimit:    payload.GasLimit,
+			GasUsed:     payload.GasUsed,
+			Time:        payload.Timestamp,
+			BaseFee:     baseFeePerGas,
+			Extra:       payload.ExtraData,
+		}
+		payload.Transactions = make([][]byte, 0)
+		payload.BlockHash = header.Hash()
+		payload.BaseFeePerGas = baseFeePerGas
+	}
 	return payload
 }
