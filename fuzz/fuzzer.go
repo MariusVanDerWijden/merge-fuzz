@@ -16,8 +16,8 @@ var engineA merge.Engine
 var engineB merge.Engine
 
 func init() {
-	engineA = merge.GethRPCEngine //merge.NewGethNode()
-	engineB = merge.GethRPCEngine
+	engineA, _ = merge.NewRPCNode("http://127.0.0.1:8545", func() {}) //merge.NewGethNode()
+	engineB, _ = merge.NewRPCNode("http://127.0.0.1:8546", func() {})
 }
 
 func FuzzPreparePayload(input []byte) int {
