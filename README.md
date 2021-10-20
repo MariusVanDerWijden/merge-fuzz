@@ -30,4 +30,5 @@ rm -rf fuzz1/ && rm -rf fuzz2/
 
 ~/go/src/github.com/ethereum/go-ethereum/build/bin/geth --datadir "fuzz1" --catalyst --http --http.api="eth,engine" --http.port 8545 --override.totalterminaldifficulty=0
 ~/go/src/github.com/ethereum/go-ethereum/build/bin/geth --datadir "fuzz2" --catalyst --http --http.api="eth,engine" --http.port 8546 -port 30304 --override.totalterminaldifficulty=0
+go-fuzz --func FuzzDifferential --procs 1
 ```
