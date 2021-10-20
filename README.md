@@ -17,3 +17,17 @@ against each other.
 - Start the fuzzer `go-fuzz --func FunctionName --procs 1`
 - Starting `go-fuzz` without a valid function name will tell you which functions are available to fuzz
 
+## Example for differential fuzzing
+In order to differential fuzz two targets against each other, they need to be started on `localhost:8545` and `localhost:8546`.
+They also need to be initialized with the same genesis block
+An example of differential fuzzing two geth instances against each other:
+```
+rm -rf fuzz1/ && rm -rf fuzz2/
+
+~/go/src/github.com/ethereum/go-ethereum/build/bin/geth init genesis.json  --datadir "fuzz1"
+~/go/src/github.com/ethereum/go-ethereum/build/bin/geth init genesis.json  --datadir "fuzz2"
+
+
+~/go/src/github.com/ethereum/go-ethereum/build/bin/geth --datadir "fuzz1" --catalyst --http --http.api="eth,engine" --http.port 8545 --override.totalterminaldifficulty=0
+~/go/src/github.com/ethereum/go-ethereum/build/bin/geth --datadir "fuzz2" --catalyst --http --http.api="eth,engine" --http.port 8546 -port 30304 --override.totalterminaldifficulty=0
+```
