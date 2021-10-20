@@ -10,6 +10,7 @@ import (
 func FuzzDifferential(input []byte) int {
 	fuzzer := fuzz.NewFromGoFuzz(input)
 	a := fuzzRandom(fuzzer, engineA)
+	fuzzer = fuzz.NewFromGoFuzz(input)
 	b := fuzzRandom(fuzzer, engineB)
 	headA, errA := engineA.GetHead()
 	headB, errB := engineB.GetHead()
