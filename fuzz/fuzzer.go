@@ -1,8 +1,10 @@
 package fuzz
 
 import (
+	"fmt"
 	"math/big"
 
+	"github.com/MariusVanDerWijden/FuzzyVM/filler"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/ethereum/go-ethereum/core/types"
@@ -10,6 +12,7 @@ import (
 	"github.com/ethereum/go-ethereum/trie"
 	fuzz "github.com/google/gofuzz"
 	"github.com/mariusvanderwijden/merge-fuzz/merge"
+	txfuzz "github.com/mariusvanderwijden/tx-fuzz"
 )
 
 var engineA merge.Engine
@@ -129,14 +132,27 @@ func fuzzForkchoiceUpdated(fuzzer *fuzz.Fuzzer, engine merge.Engine) int {
 
 func fillExecPayload(fuzzer *fuzz.Fuzzer) catalyst.ExecutableData {
 	var (
-		payload  catalyst.ExecutableData
-		realHash bool
-		basefee  int64
+		payload    catalyst.ExecutableData
+		realHash   bool
+		basefee    int64
+		fillerData = make([]byte, 128)
+		txLen      byte
+		txs        []*types.Transaction
 	)
 	fuzzer.Fuzz(&payload)
 	fuzzer.Fuzz(&realHash)
 	if realHash {
-		txs := types.Transactions{}
+		fuzzer.Fuzz(&fillerData)
+		fuzzer.Fuzz(&txLen)
+		f := filler.NewFiller(fillerData)
+		node := engineA.(*merge.RPCnode)
+		for i := 0; i < int(txLen); i++ {
+			tx, err := txfuzz.RandomValidTx(node.Node, f, payload.Coinbase, 0, big.NewInt(0), nil)
+			if err != nil {
+				fmt.Print(err)
+			}
+			txs = append(txs, tx)
+		}
 		fuzzer.Fuzz(&basefee)
 		baseFeePerGas := big.NewInt(basefee)
 		header := &types.Header{
@@ -155,9 +171,17 @@ func fillExecPayload(fuzzer *fuzz.Fuzzer) catalyst.ExecutableData {
 			BaseFee:     baseFeePerGas,
 			Extra:       payload.ExtraData,
 		}
-		payload.Transactions = make([][]byte, 0)
+		payload.Transactions = encodeTransactions(txs)
 		payload.BlockHash = header.Hash()
 		payload.BaseFeePerGas = baseFeePerGas
 	}
 	return payload
+}
+
+func encodeTransactions(txs []*types.Transaction) [][]byte {
+	var enc = make([][]byte, len(txs))
+	for i, tx := range txs {
+		enc[i], _ = tx.MarshalBinary()
+	}
+	return enc
 }
