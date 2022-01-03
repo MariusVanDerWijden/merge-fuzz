@@ -18,30 +18,22 @@ func NewRPCNode(url string, startNode func()) (*RPCnode, error) {
 	return &RPCnode{Node: node}, err
 }
 
-func (n *RPCnode) PreparePayload(params catalyst.AssembleBlockParams) (*catalyst.PayloadResponse, error) {
-	var res catalyst.PayloadResponse
-	err := n.Node.Call(&res, "engine_preparePayload", params)
-	return &res, err
-}
-
-func (n *RPCnode) GetPayload(PayloadID hexutil.Uint64) (*catalyst.ExecutableData, error) {
-	var res catalyst.ExecutableData
-	err := n.Node.Call(&res, "engine_getPayload", PayloadID)
-	return &res, err
-}
-
-func (n *RPCnode) ExecutePayload(params catalyst.ExecutableData) (catalyst.GenericStringResponse, error) {
-	var res catalyst.GenericStringResponse
-	err := n.Node.Call(&res, "engine_executePayload", params)
+func (n *RPCnode) ForkchoiceUpdatedV1(heads catalyst.ForkchoiceStateV1, PayloadAttributes *catalyst.PayloadAttributesV1) (catalyst.ForkChoiceResponse, error) {
+	var res catalyst.ForkChoiceResponse
+	err := n.Node.Call(&res, "engine_forkchoiceUpdatedV1", heads, PayloadAttributes)
 	return res, err
 }
 
-func (n *RPCnode) ConsensusValidated(params catalyst.ConsensusValidatedParams) error {
-	return n.Node.Call(nil, "engine_consensusValidated", params)
+func (n *RPCnode) ExecutePayloadV1(params catalyst.ExecutableDataV1) (catalyst.ExecutePayloadResponse, error) {
+	var res catalyst.ExecutePayloadResponse
+	err := n.Node.Call(&res, "engine_executePayloadV1", params)
+	return res, err
 }
 
-func (n *RPCnode) ForkchoiceUpdated(params catalyst.ForkChoiceParams) error {
-	return n.Node.Call(nil, "engine_forkchoiceUpdated", params)
+func (n *RPCnode) GetPayloadV1(payloadID hexutil.Bytes) (*catalyst.ExecutableDataV1, error) {
+	var res catalyst.ExecutableDataV1
+	err := n.Node.Call(&res, "engine_getPayloadV1", payloadID)
+	return &res, err
 }
 
 func (n *RPCnode) GetHead() (common.Hash, error) {

@@ -3,6 +3,7 @@ package fuzz
 import (
 	"bytes"
 	"fmt"
+	"time"
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/hexutil"
@@ -12,50 +13,49 @@ import (
 )
 
 func FuzzInteraction(input []byte) int {
-	return fuzzInteraction(fuzz.NewFromGoFuzz(input), engineA)
+	return fuzzInteraction(fuzz.NewFromGoFuzz(input), engineA, uint64(time.Now().Unix()))
 }
 
-func fuzzInteraction(fuzzer *fuzz.Fuzzer, engine merge.Engine) int {
+func fuzzInteraction(fuzzer *fuzz.Fuzzer, engine merge.Engine, timestamp uint64) int {
 	var (
-		timestamp    uint64
-		random       [32]byte
-		feeRecipient common.Address
+		random        [32]byte
+		feeRecipient  common.Address
+		realTimestamp byte
 	)
-	// TODO set valid parent hash
-	// fuzzer.Fuzz(&parentHash)
 	parentHash, err := engine.GetHead()
 	if err != nil {
 		panic(err)
 	}
-	fuzzer.Fuzz(&timestamp)
 	fuzzer.Fuzz(&random)
 	fuzzer.Fuzz(&feeRecipient)
-	payloadID, err := engine.PreparePayload(catalyst.AssembleBlockParams{ParentHash: parentHash, Timestamp: timestamp, Random: random, FeeRecipient: feeRecipient})
+	fuzzer.Fuzz(&realTimestamp)
+	if realTimestamp > 30 {
+		timestamp += 12
+	} else if realTimestamp > 60 {
+		timestamp -= 12
+	}
+	response, err := engine.ForkchoiceUpdatedV1(catalyst.ForkchoiceStateV1{HeadBlockHash: parentHash, SafeBlockHash: parentHash, FinalizedBlockHash: parentHash}, &catalyst.PayloadAttributesV1{Timestamp: timestamp, Random: random, SuggestedFeeRecipient: feeRecipient})
 	if err != nil {
 		return 0
 	}
-	payload, err := engine.GetPayload(hexutil.Uint64(payloadID.PayloadID))
+	payload, err := engine.GetPayloadV1(hexutil.Bytes(*response.PayloadID))
 	if err != nil {
 		return 0
 	}
-	resp1, err := engine.ExecutePayload(*payload)
+	resp1, err := engine.ExecutePayloadV1(*payload)
 	if err != nil {
 		panic(err)
 	}
-	resp2, err := engine.ExecutePayload(*payload)
+	resp2, err := engine.ExecutePayloadV1(*payload)
 	if err != nil {
 		panic(err)
 	}
 	if resp1.Status != resp2.Status {
 		panic(fmt.Sprintf("invalid status %v %v", resp1, resp2))
 	}
-	err = engine.ConsensusValidated(catalyst.ConsensusValidatedParams{BlockHash: payload.BlockHash, Status: catalyst.VALID.Status})
+	response, err = engine.ForkchoiceUpdatedV1(catalyst.ForkchoiceStateV1{HeadBlockHash: payload.BlockHash, SafeBlockHash: payload.BlockHash, FinalizedBlockHash: payload.BlockHash}, nil)
 	if err != nil {
-		panic(err)
-	}
-	err = engine.ForkchoiceUpdated(catalyst.ForkChoiceParams{HeadBlockHash: payload.BlockHash, FinalizedBlockHash: common.Hash{}})
-	if err != nil {
-		panic(err)
+		return 0
 	}
 	// check that head is updated
 	newHead, err := engine.GetHead()

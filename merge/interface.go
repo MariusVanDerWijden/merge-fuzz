@@ -7,10 +7,8 @@ import (
 )
 
 type Engine interface {
-	PreparePayload(params catalyst.AssembleBlockParams) (*catalyst.PayloadResponse, error)
-	GetPayload(PayloadID hexutil.Uint64) (*catalyst.ExecutableData, error)
-	ExecutePayload(params catalyst.ExecutableData) (catalyst.GenericStringResponse, error)
-	ConsensusValidated(params catalyst.ConsensusValidatedParams) error
-	ForkchoiceUpdated(params catalyst.ForkChoiceParams) error
+	ForkchoiceUpdatedV1(heads catalyst.ForkchoiceStateV1, PayloadAttributes *catalyst.PayloadAttributesV1) (catalyst.ForkChoiceResponse, error)
+	GetPayloadV1(payloadID hexutil.Bytes) (*catalyst.ExecutableDataV1, error)
+	ExecutePayloadV1(params catalyst.ExecutableDataV1) (catalyst.ExecutePayloadResponse, error)
 	GetHead() (common.Hash, error)
 }

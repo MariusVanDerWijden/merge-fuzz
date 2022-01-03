@@ -3,6 +3,7 @@ package fuzz
 import (
 	"fmt"
 	"math/big"
+	"time"
 
 	"github.com/MariusVanDerWijden/FuzzyVM/filler"
 	"github.com/ethereum/go-ethereum/common"
@@ -33,20 +34,18 @@ func FuzzExecutePayload(input []byte) int {
 	return fuzzExecutePayload(fuzz.NewFromGoFuzz(input), engineA)
 }
 
-func FuzzConsensusValidated(input []byte) int {
-	return fuzzConsensusValidated(fuzz.NewFromGoFuzz(input), engineA)
-}
-
 func FuzzForkchoiceUpdated(input []byte) int {
 	return fuzzForkchoiceUpdated(fuzz.NewFromGoFuzz(input), engineA)
 }
 
-func FuzzRandom(input []byte) int { return fuzzRandom(fuzz.NewFromGoFuzz(input), engineA) }
+func FuzzRandom(input []byte) int {
+	return fuzzRandom(fuzz.NewFromGoFuzz(input), engineA, uint64(time.Now().Unix()))
+}
 
-func fuzzRandom(fuzzer *fuzz.Fuzzer, engine merge.Engine) int {
+func fuzzRandom(fuzzer *fuzz.Fuzzer, engine merge.Engine, timestamp uint64) int {
 	var strategy byte
 	fuzzer.Fuzz(&strategy)
-	switch strategy % 6 {
+	switch strategy % 5 {
 	case 0:
 		return fuzzPreparePayload(fuzzer, engine)
 	case 1:
@@ -54,11 +53,11 @@ func fuzzRandom(fuzzer *fuzz.Fuzzer, engine merge.Engine) int {
 	case 2:
 		return fuzzExecutePayload(fuzzer, engine)
 	case 3:
-		return fuzzConsensusValidated(fuzzer, engine)
-	case 4:
 		return fuzzForkchoiceUpdated(fuzzer, engine)
+	case 4:
+		return fuzzInteraction(fuzzer, engine, timestamp)
 	case 5:
-		return fuzzInteraction(fuzzer, engine)
+		return fuzzSetHead(engine)
 	default:
 		panic("asdf")
 	}
@@ -82,14 +81,16 @@ func fuzzPreparePayload(fuzzer *fuzz.Fuzzer, engine merge.Engine) int {
 	fuzzer.Fuzz(&random)
 	fuzzer.Fuzz(&feeRecipient)
 	fuzzer.Fuzz(&payloadID)
-	engine.PreparePayload(catalyst.AssembleBlockParams{ParentHash: parentHash, Timestamp: timestamp, Random: random, FeeRecipient: feeRecipient})
+	heads := catalyst.ForkchoiceStateV1{HeadBlockHash: parentHash, SafeBlockHash: parentHash, FinalizedBlockHash: parentHash}
+	attributes := catalyst.PayloadAttributesV1{Timestamp: timestamp, Random: random, SuggestedFeeRecipient: feeRecipient}
+	engine.ForkchoiceUpdatedV1(heads, &attributes)
 	return 0
 }
 
 func fuzzGetPayload(fuzzer *fuzz.Fuzzer, engine merge.Engine) int {
-	var payloadID uint64
+	var payloadID hexutil.Bytes
 	fuzzer.Fuzz(&payloadID)
-	payload, err := engine.GetPayload(hexutil.Uint64(payloadID))
+	payload, err := engine.GetPayloadV1(payloadID)
 	if err != nil {
 		return 0
 	}
@@ -99,17 +100,7 @@ func fuzzGetPayload(fuzzer *fuzz.Fuzzer, engine merge.Engine) int {
 
 func fuzzExecutePayload(fuzzer *fuzz.Fuzzer, engine merge.Engine) int {
 	payload := fillExecPayload(fuzzer)
-	_, err := engine.ExecutePayload(payload)
-	if err != nil {
-		return 1
-	}
-	return 0
-}
-
-func fuzzConsensusValidated(fuzzer *fuzz.Fuzzer, engine merge.Engine) int {
-	var blockhash common.Hash
-	fuzzer.Fuzz(&blockhash)
-	err := engine.ConsensusValidated(catalyst.ConsensusValidatedParams{BlockHash: blockhash})
+	_, err := engine.ExecutePayloadV1(payload)
 	if err != nil {
 		return 1
 	}
@@ -119,20 +110,31 @@ func fuzzConsensusValidated(fuzzer *fuzz.Fuzzer, engine merge.Engine) int {
 func fuzzForkchoiceUpdated(fuzzer *fuzz.Fuzzer, engine merge.Engine) int {
 	var (
 		headBlockHash      common.Hash
+		safeBlockHash      common.Hash
 		finalizedBlockHash common.Hash
 	)
 	fuzzer.Fuzz(&headBlockHash)
+	fuzzer.Fuzz(&safeBlockHash)
 	fuzzer.Fuzz(&finalizedBlockHash)
-	err := engine.ForkchoiceUpdated(catalyst.ForkChoiceParams{HeadBlockHash: headBlockHash, FinalizedBlockHash: finalizedBlockHash})
+	_, err := engine.ForkchoiceUpdatedV1(catalyst.ForkchoiceStateV1{HeadBlockHash: headBlockHash, SafeBlockHash: safeBlockHash, FinalizedBlockHash: finalizedBlockHash}, nil)
 	if err == nil {
 		return 1
 	}
 	return 0
 }
 
-func fillExecPayload(fuzzer *fuzz.Fuzzer) catalyst.ExecutableData {
+func fuzzSetHead(engine merge.Engine) int {
+	head, _ := engine.GetHead()
+	_, err := engine.ForkchoiceUpdatedV1(catalyst.ForkchoiceStateV1{HeadBlockHash: head, SafeBlockHash: head, FinalizedBlockHash: head}, nil)
+	if err == nil {
+		return 1
+	}
+	return 0
+}
+
+func fillExecPayload(fuzzer *fuzz.Fuzzer) catalyst.ExecutableDataV1 {
 	var (
-		payload    catalyst.ExecutableData
+		payload    catalyst.ExecutableDataV1
 		realHash   bool
 		basefee    int64
 		fillerData = make([]byte, 128)
@@ -147,9 +149,10 @@ func fillExecPayload(fuzzer *fuzz.Fuzzer) catalyst.ExecutableData {
 		f := filler.NewFiller(fillerData)
 		node := engineA.(*merge.RPCnode)
 		for i := 0; i < int(txLen); i++ {
-			tx, err := txfuzz.RandomValidTx(node.Node, f, payload.Coinbase, 0, big.NewInt(0), nil)
+			tx, err := txfuzz.RandomValidTx(node.Node, f, payload.FeeRecipient, 0, big.NewInt(0), nil)
 			if err != nil {
-				fmt.Print(err)
+				fmt.Println(err)
+				continue
 			}
 			txs = append(txs, tx)
 		}
@@ -158,10 +161,10 @@ func fillExecPayload(fuzzer *fuzz.Fuzzer) catalyst.ExecutableData {
 		header := &types.Header{
 			ParentHash:  payload.ParentHash,
 			UncleHash:   types.EmptyUncleHash,
-			Coinbase:    payload.Coinbase,
+			Coinbase:    payload.FeeRecipient,
 			Root:        payload.StateRoot,
 			TxHash:      types.DeriveSha(types.Transactions(txs), trie.NewStackTrie(nil)),
-			ReceiptHash: payload.ReceiptRoot,
+			ReceiptHash: payload.ReceiptsRoot,
 			Bloom:       types.BytesToBloom(payload.LogsBloom),
 			Difficulty:  common.Big0,
 			Number:      big.NewInt(int64(payload.Number)),

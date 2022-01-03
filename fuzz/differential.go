@@ -3,15 +3,17 @@ package fuzz
 import (
 	"bytes"
 	"fmt"
+	"time"
 
 	fuzz "github.com/google/gofuzz"
 )
 
 func FuzzDifferential(input []byte) int {
+	timestamp := uint64(time.Now().Unix())
 	fuzzer := fuzz.NewFromGoFuzz(input)
-	a := fuzzRandom(fuzzer, engineA)
+	a := fuzzRandom(fuzzer, engineA, timestamp)
 	fuzzer = fuzz.NewFromGoFuzz(input)
-	b := fuzzRandom(fuzzer, engineB)
+	b := fuzzRandom(fuzzer, engineB, timestamp)
 	headA, errA := engineA.GetHead()
 	headB, errB := engineB.GetHead()
 	if errA != nil || errB != nil {

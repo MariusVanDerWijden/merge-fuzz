@@ -24,11 +24,11 @@ An example of differential fuzzing two geth instances against each other:
 ```
 rm -rf fuzz1/ && rm -rf fuzz2/
 
-~/go/src/github.com/ethereum/go-ethereum/build/bin/geth init genesis.json  --datadir "fuzz1"
-~/go/src/github.com/ethereum/go-ethereum/build/bin/geth init genesis.json  --datadir "fuzz2"
+~/go/src/github.com/ethereum/go-ethereum/build/bin/geth init fuzz_genesis.json  --datadir "fuzz1"
+~/go/src/github.com/ethereum/go-ethereum/build/bin/geth init fuzz_genesis.json  --datadir "fuzz2"
 
 
-~/go/src/github.com/ethereum/go-ethereum/build/bin/geth --datadir "fuzz1" --catalyst --http --http.api="eth,engine" --http.port 8545 --override.totalterminaldifficulty=0
-~/go/src/github.com/ethereum/go-ethereum/build/bin/geth --datadir "fuzz2" --catalyst --http --http.api="eth,engine" --http.port 8546 -port 30304 --override.totalterminaldifficulty=0
+~/go/src/github.com/ethereum/go-ethereum/build/bin/geth --datadir "fuzz1" --catalyst --http --http.api="eth,engine" --http.port 8545 --override.terminaltotaldifficulty=0
+~/go/src/github.com/ethereum/go-ethereum/build/bin/geth --datadir "fuzz2" --catalyst --http --http.api="eth,engine" --http.port 8546 -port 30304 --override.terminaltotaldifficulty=0
 go-fuzz --func FuzzDifferential --procs 1
 ```
