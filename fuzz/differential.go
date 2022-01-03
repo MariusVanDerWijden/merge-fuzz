@@ -3,12 +3,29 @@ package fuzz
 import (
 	"bytes"
 	"fmt"
+	"os"
 	"time"
 
 	fuzz "github.com/google/gofuzz"
 )
 
+var logFile = "fuzz_log"
+
+func writeStatus(input []byte) {
+	f, err := os.OpenFile(logFile, os.O_APPEND|os.O_WRONLY|os.O_CREATE, 0600)
+	if err != nil {
+		panic(err)
+	}
+
+	defer f.Close()
+
+	if _, err = f.WriteString(string(input) + "\n"); err != nil {
+		panic(err)
+	}
+}
+
 func FuzzDifferential(input []byte) int {
+	writeStatus(input)
 	timestamp := uint64(time.Now().Unix())
 	fuzzer := fuzz.NewFromGoFuzz(input)
 	a := fuzzRandom(fuzzer, engineA, timestamp)
