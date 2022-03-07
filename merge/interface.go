@@ -2,13 +2,12 @@ package merge
 
 import (
 	"github.com/ethereum/go-ethereum/common"
-	"github.com/ethereum/go-ethereum/common/hexutil"
-	"github.com/ethereum/go-ethereum/eth/catalyst"
+	"github.com/ethereum/go-ethereum/core/beacon"
 )
 
 type Engine interface {
-	ForkchoiceUpdatedV1(heads catalyst.ForkchoiceStateV1, PayloadAttributes *catalyst.PayloadAttributesV1) (catalyst.ForkChoiceResponse, error)
-	GetPayloadV1(payloadID hexutil.Bytes) (*catalyst.ExecutableDataV1, error)
-	ExecutePayloadV1(params catalyst.ExecutableDataV1) (catalyst.ExecutePayloadResponse, error)
+	ForkchoiceUpdatedV1(heads beacon.ForkchoiceStateV1, PayloadAttributes *beacon.PayloadAttributesV1) (beacon.ForkChoiceResponse, error)
+	GetPayloadV1(payloadID beacon.PayloadID) (*beacon.ExecutableDataV1, error)
+	ExecutePayloadV1(params beacon.ExecutableDataV1) (beacon.ExecutePayloadResponse, error)
 	GetHead() (common.Hash, error)
 }

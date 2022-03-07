@@ -6,8 +6,7 @@ import (
 	"time"
 
 	"github.com/ethereum/go-ethereum/common"
-	"github.com/ethereum/go-ethereum/common/hexutil"
-	"github.com/ethereum/go-ethereum/eth/catalyst"
+	"github.com/ethereum/go-ethereum/core/beacon"
 	fuzz "github.com/google/gofuzz"
 	"github.com/mariusvanderwijden/merge-fuzz/merge"
 )
@@ -34,11 +33,11 @@ func fuzzInteraction(fuzzer *fuzz.Fuzzer, engine merge.Engine, timestamp uint64)
 	} else if realTimestamp > 60 {
 		timestamp -= 12
 	}
-	response, err := engine.ForkchoiceUpdatedV1(catalyst.ForkchoiceStateV1{HeadBlockHash: parentHash, SafeBlockHash: parentHash, FinalizedBlockHash: parentHash}, &catalyst.PayloadAttributesV1{Timestamp: timestamp, Random: random, SuggestedFeeRecipient: feeRecipient})
+	response, err := engine.ForkchoiceUpdatedV1(beacon.ForkchoiceStateV1{HeadBlockHash: parentHash, SafeBlockHash: parentHash, FinalizedBlockHash: parentHash}, &beacon.PayloadAttributesV1{Timestamp: timestamp, Random: random, SuggestedFeeRecipient: feeRecipient})
 	if err != nil {
 		return 0
 	}
-	payload, err := engine.GetPayloadV1(hexutil.Bytes(*response.PayloadID))
+	payload, err := engine.GetPayloadV1(*response.PayloadID)
 	if err != nil {
 		return 0
 	}
@@ -53,7 +52,7 @@ func fuzzInteraction(fuzzer *fuzz.Fuzzer, engine merge.Engine, timestamp uint64)
 	if resp1.Status != resp2.Status {
 		panic(fmt.Sprintf("invalid status %v %v", resp1, resp2))
 	}
-	response, err = engine.ForkchoiceUpdatedV1(catalyst.ForkchoiceStateV1{HeadBlockHash: payload.BlockHash, SafeBlockHash: payload.BlockHash, FinalizedBlockHash: payload.BlockHash}, nil)
+	response, err = engine.ForkchoiceUpdatedV1(beacon.ForkchoiceStateV1{HeadBlockHash: payload.BlockHash, SafeBlockHash: payload.BlockHash, FinalizedBlockHash: payload.BlockHash}, nil)
 	if err != nil {
 		return 0
 	}

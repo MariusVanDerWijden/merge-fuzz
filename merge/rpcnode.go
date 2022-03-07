@@ -2,9 +2,8 @@ package merge
 
 import (
 	"github.com/ethereum/go-ethereum/common"
-	"github.com/ethereum/go-ethereum/common/hexutil"
+	"github.com/ethereum/go-ethereum/core/beacon"
 	"github.com/ethereum/go-ethereum/core/types"
-	"github.com/ethereum/go-ethereum/eth/catalyst"
 	"github.com/ethereum/go-ethereum/rpc"
 )
 
@@ -18,20 +17,20 @@ func NewRPCNode(url string, startNode func()) (*RPCnode, error) {
 	return &RPCnode{Node: node}, err
 }
 
-func (n *RPCnode) ForkchoiceUpdatedV1(heads catalyst.ForkchoiceStateV1, PayloadAttributes *catalyst.PayloadAttributesV1) (catalyst.ForkChoiceResponse, error) {
-	var res catalyst.ForkChoiceResponse
+func (n *RPCnode) ForkchoiceUpdatedV1(heads beacon.ForkchoiceStateV1, PayloadAttributes *beacon.PayloadAttributesV1) (beacon.ForkChoiceResponse, error) {
+	var res beacon.ForkChoiceResponse
 	err := n.Node.Call(&res, "engine_forkchoiceUpdatedV1", heads, PayloadAttributes)
 	return res, err
 }
 
-func (n *RPCnode) ExecutePayloadV1(params catalyst.ExecutableDataV1) (catalyst.ExecutePayloadResponse, error) {
-	var res catalyst.ExecutePayloadResponse
+func (n *RPCnode) ExecutePayloadV1(params beacon.ExecutableDataV1) (beacon.ExecutePayloadResponse, error) {
+	var res beacon.ExecutePayloadResponse
 	err := n.Node.Call(&res, "engine_executePayloadV1", params)
 	return res, err
 }
 
-func (n *RPCnode) GetPayloadV1(payloadID hexutil.Bytes) (*catalyst.ExecutableDataV1, error) {
-	var res catalyst.ExecutableDataV1
+func (n *RPCnode) GetPayloadV1(payloadID beacon.PayloadID) (*beacon.ExecutableDataV1, error) {
+	var res beacon.ExecutableDataV1
 	err := n.Node.Call(&res, "engine_getPayloadV1", payloadID)
 	return &res, err
 }

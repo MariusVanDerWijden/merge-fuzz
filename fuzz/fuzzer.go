@@ -7,9 +7,8 @@ import (
 
 	"github.com/MariusVanDerWijden/FuzzyVM/filler"
 	"github.com/ethereum/go-ethereum/common"
-	"github.com/ethereum/go-ethereum/common/hexutil"
+	"github.com/ethereum/go-ethereum/core/beacon"
 	"github.com/ethereum/go-ethereum/core/types"
-	"github.com/ethereum/go-ethereum/eth/catalyst"
 	"github.com/ethereum/go-ethereum/trie"
 	fuzz "github.com/google/gofuzz"
 	"github.com/mariusvanderwijden/merge-fuzz/merge"
@@ -81,14 +80,14 @@ func fuzzPreparePayload(fuzzer *fuzz.Fuzzer, engine merge.Engine) int {
 	fuzzer.Fuzz(&random)
 	fuzzer.Fuzz(&feeRecipient)
 	fuzzer.Fuzz(&payloadID)
-	heads := catalyst.ForkchoiceStateV1{HeadBlockHash: parentHash, SafeBlockHash: parentHash, FinalizedBlockHash: parentHash}
-	attributes := catalyst.PayloadAttributesV1{Timestamp: timestamp, Random: random, SuggestedFeeRecipient: feeRecipient}
+	heads := beacon.ForkchoiceStateV1{HeadBlockHash: parentHash, SafeBlockHash: parentHash, FinalizedBlockHash: parentHash}
+	attributes := beacon.PayloadAttributesV1{Timestamp: timestamp, Random: random, SuggestedFeeRecipient: feeRecipient}
 	engine.ForkchoiceUpdatedV1(heads, &attributes)
 	return 0
 }
 
 func fuzzGetPayload(fuzzer *fuzz.Fuzzer, engine merge.Engine) int {
-	var payloadID hexutil.Bytes
+	var payloadID beacon.PayloadID
 	fuzzer.Fuzz(&payloadID)
 	payload, err := engine.GetPayloadV1(payloadID)
 	if err != nil {
@@ -116,7 +115,7 @@ func fuzzForkchoiceUpdated(fuzzer *fuzz.Fuzzer, engine merge.Engine) int {
 	fuzzer.Fuzz(&headBlockHash)
 	fuzzer.Fuzz(&safeBlockHash)
 	fuzzer.Fuzz(&finalizedBlockHash)
-	_, err := engine.ForkchoiceUpdatedV1(catalyst.ForkchoiceStateV1{HeadBlockHash: headBlockHash, SafeBlockHash: safeBlockHash, FinalizedBlockHash: finalizedBlockHash}, nil)
+	_, err := engine.ForkchoiceUpdatedV1(beacon.ForkchoiceStateV1{HeadBlockHash: headBlockHash, SafeBlockHash: safeBlockHash, FinalizedBlockHash: finalizedBlockHash}, nil)
 	if err == nil {
 		return 1
 	}
@@ -125,16 +124,16 @@ func fuzzForkchoiceUpdated(fuzzer *fuzz.Fuzzer, engine merge.Engine) int {
 
 func fuzzSetHead(engine merge.Engine) int {
 	head, _ := engine.GetHead()
-	_, err := engine.ForkchoiceUpdatedV1(catalyst.ForkchoiceStateV1{HeadBlockHash: head, SafeBlockHash: head, FinalizedBlockHash: head}, nil)
+	_, err := engine.ForkchoiceUpdatedV1(beacon.ForkchoiceStateV1{HeadBlockHash: head, SafeBlockHash: head, FinalizedBlockHash: head}, nil)
 	if err == nil {
 		return 1
 	}
 	return 0
 }
 
-func fillExecPayload(fuzzer *fuzz.Fuzzer) catalyst.ExecutableDataV1 {
+func fillExecPayload(fuzzer *fuzz.Fuzzer) beacon.ExecutableDataV1 {
 	var (
-		payload    catalyst.ExecutableDataV1
+		payload    beacon.ExecutableDataV1
 		realHash   bool
 		basefee    int64
 		fillerData = make([]byte, 128)
