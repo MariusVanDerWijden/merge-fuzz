@@ -23,9 +23,9 @@ func (n *RPCnode) ForkchoiceUpdatedV1(heads beacon.ForkchoiceStateV1, PayloadAtt
 	return res, err
 }
 
-func (n *RPCnode) ExecutePayloadV1(params beacon.ExecutableDataV1) (beacon.ExecutePayloadResponse, error) {
-	var res beacon.ExecutePayloadResponse
-	err := n.Node.Call(&res, "engine_executePayloadV1", params)
+func (n *RPCnode) NewPayloadV1(params beacon.ExecutableDataV1) (beacon.PayloadStatusV1, error) {
+	var res beacon.PayloadStatusV1
+	err := n.Node.Call(&res, "engine_newPayloadV1", params)
 	return res, err
 }
 

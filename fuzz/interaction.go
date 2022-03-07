@@ -41,11 +41,11 @@ func fuzzInteraction(fuzzer *fuzz.Fuzzer, engine merge.Engine, timestamp uint64)
 	if err != nil {
 		return 0
 	}
-	resp1, err := engine.ExecutePayloadV1(*payload)
+	resp1, err := engine.NewPayloadV1(*payload)
 	if err != nil {
 		panic(err)
 	}
-	resp2, err := engine.ExecutePayloadV1(*payload)
+	resp2, err := engine.NewPayloadV1(*payload)
 	if err != nil {
 		panic(err)
 	}

@@ -99,7 +99,7 @@ func fuzzGetPayload(fuzzer *fuzz.Fuzzer, engine merge.Engine) int {
 
 func fuzzExecutePayload(fuzzer *fuzz.Fuzzer, engine merge.Engine) int {
 	payload := fillExecPayload(fuzzer)
-	_, err := engine.ExecutePayloadV1(payload)
+	_, err := engine.NewPayloadV1(payload)
 	if err != nil {
 		return 1
 	}
