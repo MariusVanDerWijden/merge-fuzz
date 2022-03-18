@@ -11,6 +11,7 @@ import (
 	"github.com/ethereum/go-ethereum/eth"
 	"github.com/ethereum/go-ethereum/eth/catalyst"
 	"github.com/ethereum/go-ethereum/eth/ethconfig"
+	"github.com/ethereum/go-ethereum/miner"
 	"github.com/ethereum/go-ethereum/node"
 )
 
@@ -35,7 +36,7 @@ func StartGethNode(filename string) *gethNode {
 		panic(err)
 	}
 
-	ethcfg := &ethconfig.Config{Genesis: genesis, TrieTimeout: time.Minute, TrieDirtyCache: 256, TrieCleanCache: 256}
+	ethcfg := &ethconfig.Config{Genesis: genesis, TrieTimeout: time.Minute, TrieDirtyCache: 256, TrieCleanCache: 256, Miner: miner.Config{GasCeil: 30_000_000}}
 	ethservice, err := eth.New(n, ethcfg)
 	if err != nil {
 		panic(err)
