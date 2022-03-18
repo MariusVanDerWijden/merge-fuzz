@@ -2,9 +2,12 @@ package fuzz
 
 import (
 	"fmt"
+	"io/ioutil"
 	"math/big"
+	"sync"
 	"time"
 
+	"github.com/BurntSushi/toml"
 	"github.com/MariusVanDerWijden/FuzzyVM/filler"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/beacon"
@@ -15,30 +18,55 @@ import (
 	txfuzz "github.com/mariusvanderwijden/tx-fuzz"
 )
 
-var engineA merge.Engine
-var engineB merge.Engine
+var engines []merge.Engine
+
+type Config struct {
+	Genesis string
+	Nodes   []string
+}
+
+var once sync.Once
 
 func init() {
-	engineA, _ = merge.NewRPCNode("http://127.0.0.1:8545", func() {}) //merge.NewGethNode()
-	engineB, _ = merge.NewRPCNode("http://127.0.0.1:8546", func() {})
+	once.Do(func() {
+		tomlData, err := ioutil.ReadFile("config.toml")
+		if err != nil {
+			panic(err)
+		}
+		var conf Config
+		_, err = toml.Decode(string(tomlData), &conf)
+		if err != nil {
+			panic(err)
+		}
+
+		engines = make([]merge.Engine, 0, len(conf.Nodes)+1)
+		engines = append(engines, merge.StartGethNode("genesis.json"))
+		for _, url := range conf.Nodes {
+			node, err := merge.NewRPCNode(url, func() {})
+			if err != nil {
+				panic(err)
+			}
+			engines = append(engines, node)
+		}
+	})
 }
 
 func FuzzPreparePayload(input []byte) int {
-	return fuzzPreparePayload(fuzz.NewFromGoFuzz(input), engineA)
+	return fuzzPreparePayload(fuzz.NewFromGoFuzz(input), engines[1])
 }
 
-func FuzzGetPayload(input []byte) int { return fuzzGetPayload(fuzz.NewFromGoFuzz(input), engineA) }
+func FuzzGetPayload(input []byte) int { return fuzzGetPayload(fuzz.NewFromGoFuzz(input), engines[1]) }
 
 func FuzzExecutePayload(input []byte) int {
-	return fuzzExecutePayload(fuzz.NewFromGoFuzz(input), engineA)
+	return fuzzExecutePayload(fuzz.NewFromGoFuzz(input), engines[1])
 }
 
 func FuzzForkchoiceUpdated(input []byte) int {
-	return fuzzForkchoiceUpdated(fuzz.NewFromGoFuzz(input), engineA)
+	return fuzzForkchoiceUpdated(fuzz.NewFromGoFuzz(input), engines[1])
 }
 
 func FuzzRandom(input []byte) int {
-	return fuzzRandom(fuzz.NewFromGoFuzz(input), engineA, uint64(time.Now().Unix()))
+	return fuzzRandom(fuzz.NewFromGoFuzz(input), engines[1], uint64(time.Now().Unix()))
 }
 
 func fuzzRandom(fuzzer *fuzz.Fuzzer, engine merge.Engine, timestamp uint64) int {
@@ -146,7 +174,7 @@ func fillExecPayload(fuzzer *fuzz.Fuzzer) beacon.ExecutableDataV1 {
 		fuzzer.Fuzz(&fillerData)
 		fuzzer.Fuzz(&txLen)
 		f := filler.NewFiller(fillerData)
-		node := engineA.(*merge.RPCnode)
+		node := engines[1].(*merge.RPCnode)
 		for i := 0; i < int(txLen); i++ {
 			tx, err := txfuzz.RandomValidTx(node.Node, f, payload.FeeRecipient, 0, big.NewInt(0), nil)
 			if err != nil {

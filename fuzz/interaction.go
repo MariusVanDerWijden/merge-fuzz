@@ -12,7 +12,7 @@ import (
 )
 
 func FuzzInteraction(input []byte) int {
-	return fuzzInteraction(fuzz.NewFromGoFuzz(input), engineA, uint64(time.Now().Unix()))
+	return fuzzInteraction(fuzz.NewFromGoFuzz(input), engines[1], uint64(time.Now().Unix()))
 }
 
 func fuzzInteraction(fuzzer *fuzz.Fuzzer, engine merge.Engine, timestamp uint64) int {

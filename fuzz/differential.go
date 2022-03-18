@@ -25,23 +25,31 @@ func writeStatus(input []byte) {
 }
 
 func FuzzDifferential(input []byte) int {
+	interesting := false
 	writeStatus(input)
+	// Execute test on first node
 	timestamp := uint64(time.Now().Unix())
 	fuzzer := fuzz.NewFromGoFuzz(input)
-	a := fuzzRandom(fuzzer, engineA, timestamp)
-	fuzzer = fuzz.NewFromGoFuzz(input)
-	b := fuzzRandom(fuzzer, engineB, timestamp)
-	headA, errA := engineA.GetHead()
-	headB, errB := engineB.GetHead()
-	if errA != nil || errB != nil {
-		panic(fmt.Sprintf("could not retrieve heads, a: %v, b: %v", errA, errB))
-	}
+	a := fuzzRandom(fuzzer, engines[0], timestamp)
+	headA, errA := engines[0].GetHead()
+	for _, engine := range engines {
+		// Execute test on all other nodes
+		fuzzer = fuzz.NewFromGoFuzz(input)
+		b := fuzzRandom(fuzzer, engine, timestamp)
+		headB, errB := engine.GetHead()
+		if errA != nil || errB != nil {
+			panic(fmt.Sprintf("could not retrieve heads, a: %v, b: %v", errA, errB))
+		}
 
-	if !bytes.Equal(headA[:], headB[:]) {
-		panic(fmt.Sprintf("different heads, a: %v, b: %v", headA, headB))
-	}
+		if !bytes.Equal(headA[:], headB[:]) {
+			panic(fmt.Sprintf("different heads, a: %v, b: %v", headA, headB))
+		}
 
-	if a != b {
+		if a != b {
+			interesting = true
+		}
+	}
+	if interesting {
 		return 1
 	}
 	return 0
