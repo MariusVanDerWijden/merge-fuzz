@@ -9,13 +9,13 @@ import (
 
 	"github.com/BurntSushi/toml"
 	"github.com/MariusVanDerWijden/FuzzyVM/filler"
+	txfuzz "github.com/MariusVanDerWijden/tx-fuzz"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/beacon"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/trie"
 	fuzz "github.com/google/gofuzz"
 	"github.com/mariusvanderwijden/merge-fuzz/merge"
-	txfuzz "github.com/mariusvanderwijden/tx-fuzz"
 )
 
 var engines []merge.Engine
@@ -23,6 +23,7 @@ var engines []merge.Engine
 type Config struct {
 	Genesis string
 	Nodes   []string
+	Jwts    []string
 }
 
 var once sync.Once
@@ -41,8 +42,8 @@ func init() {
 
 		engines = make([]merge.Engine, 0, len(conf.Nodes)+1)
 		engines = append(engines, merge.StartGethNode("genesis.json"))
-		for _, url := range conf.Nodes {
-			node, err := merge.NewRPCNode(url, func() {})
+		for i := range conf.Nodes {
+			node, err := merge.NewRPCNode(conf.Nodes[i], conf.Jwts[i], func() {})
 			if err != nil {
 				panic(err)
 			}
@@ -176,7 +177,7 @@ func fillExecPayload(fuzzer *fuzz.Fuzzer) beacon.ExecutableDataV1 {
 		f := filler.NewFiller(fillerData)
 		node := engines[1].(*merge.RPCnode)
 		for i := 0; i < int(txLen); i++ {
-			tx, err := txfuzz.RandomValidTx(node.Node, f, payload.FeeRecipient, 0, big.NewInt(0), nil)
+			tx, err := txfuzz.RandomValidTx(node.Node, f, payload.FeeRecipient, 0, big.NewInt(0), nil, false)
 			if err != nil {
 				fmt.Println(err)
 				continue

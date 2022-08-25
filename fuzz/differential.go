@@ -32,17 +32,17 @@ func FuzzDifferential(input []byte) int {
 	fuzzer := fuzz.NewFromGoFuzz(input)
 	a := fuzzRandom(fuzzer, engines[0], timestamp)
 	headA, errA := engines[0].GetHead()
-	for _, engine := range engines {
+	for i, engine := range engines {
 		// Execute test on all other nodes
 		fuzzer = fuzz.NewFromGoFuzz(input)
 		b := fuzzRandom(fuzzer, engine, timestamp)
 		headB, errB := engine.GetHead()
 		if errA != nil || errB != nil {
-			panic(fmt.Sprintf("could not retrieve heads, a: %v, b: %v", errA, errB))
+			panic(fmt.Sprintf("could not retrieve heads, a: %v, b: %v, %v", errA, errB, i))
 		}
 
 		if !bytes.Equal(headA[:], headB[:]) {
-			panic(fmt.Sprintf("different heads, a: %v, b: %v", headA, headB))
+			panic(fmt.Sprintf("different heads, a: %v, b: %v, %v", headA, headB, i))
 		}
 
 		if a != b {
