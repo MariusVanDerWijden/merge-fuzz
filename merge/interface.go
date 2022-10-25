@@ -6,8 +6,11 @@ import (
 )
 
 type Engine interface {
-	ForkchoiceUpdatedV1(heads beacon.ForkchoiceStateV1, PayloadAttributes *beacon.PayloadAttributesV1) (beacon.ForkChoiceResponse, error)
-	GetPayloadV1(payloadID beacon.PayloadID) (*beacon.ExecutableDataV1, error)
-	NewPayloadV1(params beacon.ExecutableDataV1) (beacon.PayloadStatusV1, error)
+	ForkchoiceUpdatedV1(heads beacon.ForkchoiceStateV1, PayloadAttributes *beacon.PayloadAttributes) (beacon.ForkChoiceResponse, error)
+	ForkchoiceUpdatedV2(heads beacon.ForkchoiceStateV1, PayloadAttributes *beacon.PayloadAttributes) (beacon.ForkChoiceResponse, error)
+	GetPayloadV1(payloadID beacon.PayloadID) (*beacon.ExecutableData, error)
+	NewPayloadV1(params beacon.ExecutableData) (beacon.PayloadStatusV1, error)
+	GetPayloadV2(payloadID beacon.PayloadID) (*beacon.ExecutableData, error)
+	NewPayloadV2(params beacon.ExecutableData) (beacon.PayloadStatusV1, error)
 	GetHead() (common.Hash, error)
 }

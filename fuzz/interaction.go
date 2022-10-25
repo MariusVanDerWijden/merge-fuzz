@@ -33,26 +33,28 @@ func fuzzInteraction(fuzzer *fuzz.Fuzzer, engine merge.Engine, timestamp uint64)
 	} else if realTimestamp > 60 {
 		timestamp -= 12
 	}
-	response, err := engine.ForkchoiceUpdatedV1(beacon.ForkchoiceStateV1{HeadBlockHash: parentHash, SafeBlockHash: parentHash, FinalizedBlockHash: parentHash}, &beacon.PayloadAttributesV1{Timestamp: timestamp, Random: random, SuggestedFeeRecipient: feeRecipient})
+
+	withdrawals := fuzzWithdrawals(fuzzer)
+	response, err := engine.ForkchoiceUpdatedV2(beacon.ForkchoiceStateV1{HeadBlockHash: parentHash, SafeBlockHash: parentHash, FinalizedBlockHash: parentHash}, &beacon.PayloadAttributes{Timestamp: timestamp, Random: random, SuggestedFeeRecipient: feeRecipient, Withdrawals: withdrawals})
 	if err != nil {
 		return 0
 	}
-	payload, err := engine.GetPayloadV1(*response.PayloadID)
+	payload, err := engine.GetPayloadV2(*response.PayloadID)
 	if err != nil {
 		return 0
 	}
-	resp1, err := engine.NewPayloadV1(*payload)
+	resp1, err := engine.NewPayloadV2(*payload)
 	if err != nil {
 		panic(err)
 	}
-	resp2, err := engine.NewPayloadV1(*payload)
+	resp2, err := engine.NewPayloadV2(*payload)
 	if err != nil {
 		panic(err)
 	}
 	if resp1.Status != resp2.Status {
 		panic(fmt.Sprintf("invalid status %v %v", resp1, resp2))
 	}
-	response, err = engine.ForkchoiceUpdatedV1(beacon.ForkchoiceStateV1{HeadBlockHash: payload.BlockHash, SafeBlockHash: payload.BlockHash, FinalizedBlockHash: payload.BlockHash}, nil)
+	response, err = engine.ForkchoiceUpdatedV2(beacon.ForkchoiceStateV1{HeadBlockHash: payload.BlockHash, SafeBlockHash: payload.BlockHash, FinalizedBlockHash: payload.BlockHash}, nil)
 	if err != nil {
 		return 0
 	}
