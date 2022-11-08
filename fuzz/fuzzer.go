@@ -135,7 +135,7 @@ func fuzzWithdrawals(fuzzer *fuzz.Fuzzer) types.Withdrawals {
 		fuzzer.Fuzz(&receipient)
 		fuzzer.Fuzz(&amount)
 
-		withdrawal := types.Withdrawal{Index: index, Validator: validator, Recipient: receipient, Amount: new(big.Int).SetBytes(amount[:])}
+		withdrawal := types.Withdrawal{Index: index, Validator: validator, Address: receipient, Amount: new(big.Int).SetBytes(amount[:])}
 		out = append(out, &withdrawal)
 	}
 	return types.Withdrawals(out)

@@ -30,7 +30,7 @@ func TestInteraction(t *testing.T) {
 		receipient := common.Address{byte(i)}
 		amount := [32]byte{byte(i)}
 
-		withdrawal := types.Withdrawal{Index: index, Validator: validator, Recipient: receipient, Amount: new(big.Int).SetBytes(amount[:])}
+		withdrawal := types.Withdrawal{Index: index, Validator: validator, Address: receipient, Amount: new(big.Int).SetBytes(amount[:])}
 		out = append(out, &withdrawal)
 	}
 	withdrawals := types.Withdrawals(out)
