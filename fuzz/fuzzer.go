@@ -126,14 +126,16 @@ func fuzzWithdrawals(fuzzer *fuzz.Fuzzer) types.Withdrawals {
 	for i := 0; i < int(cnt); i++ {
 		var (
 			index      uint64
+			validator  uint64
 			receipient common.Address
 			amount     [32]byte
 		)
 		fuzzer.Fuzz(&index)
+		fuzzer.Fuzz(&validator)
 		fuzzer.Fuzz(&receipient)
 		fuzzer.Fuzz(&amount)
 
-		withdrawal := types.Withdrawal{Index: index, Recipient: receipient, Amount: new(big.Int).SetBytes(amount[:])}
+		withdrawal := types.Withdrawal{Index: index, Validator: validator, Recipient: receipient, Amount: new(big.Int).SetBytes(amount[:])}
 		out = append(out, &withdrawal)
 	}
 	return types.Withdrawals(out)
