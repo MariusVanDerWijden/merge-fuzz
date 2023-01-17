@@ -50,16 +50,28 @@ func StartGethNode(filename string) *gethNode {
 	}
 }
 
-func (g *gethNode) ForkchoiceUpdatedV1(heads beacon.ForkchoiceStateV1, PayloadAttributes *beacon.PayloadAttributesV1) (beacon.ForkChoiceResponse, error) {
+func (g *gethNode) ForkchoiceUpdatedV1(heads beacon.ForkchoiceStateV1, PayloadAttributes *beacon.PayloadAttributes) (beacon.ForkChoiceResponse, error) {
 	return g.api.ForkchoiceUpdatedV1(heads, PayloadAttributes)
 }
 
-func (g *gethNode) GetPayloadV1(payloadID beacon.PayloadID) (*beacon.ExecutableDataV1, error) {
+func (g *gethNode) ForkchoiceUpdatedV2(heads beacon.ForkchoiceStateV1, PayloadAttributes *beacon.PayloadAttributes) (beacon.ForkChoiceResponse, error) {
+	return g.api.ForkchoiceUpdatedV2(heads, PayloadAttributes)
+}
+
+func (g *gethNode) GetPayloadV1(payloadID beacon.PayloadID) (*beacon.ExecutableData, error) {
 	return g.api.GetPayloadV1(payloadID)
 }
 
-func (g *gethNode) NewPayloadV1(params beacon.ExecutableDataV1) (beacon.PayloadStatusV1, error) {
+func (g *gethNode) NewPayloadV1(params beacon.ExecutableData) (beacon.PayloadStatusV1, error) {
 	return g.api.NewPayloadV1(params)
+}
+
+func (g *gethNode) GetPayloadV2(payloadID beacon.PayloadID) (*beacon.ExecutableData, error) {
+	return g.api.GetPayloadV2(payloadID)
+}
+
+func (g *gethNode) NewPayloadV2(params beacon.ExecutableData) (beacon.PayloadStatusV1, error) {
+	return g.api.NewPayloadV2(params)
 }
 
 func (g *gethNode) GetHead() (common.Hash, error) {
