@@ -41,7 +41,10 @@ func init() {
 		}
 
 		engines = make([]merge.Engine, 0, len(conf.Nodes)+1)
-		engines = append(engines, merge.StartGethNode("genesis.json"))
+		// TODO remove once differential fuzzing again
+		n, _ := merge.NewRPCNode("", "", func() {})
+		engines = append(engines, n)
+		//engines = append(engines, merge.StartGethNode("genesis.json"))
 		for i := range conf.Nodes {
 			node, err := merge.NewRPCNode(conf.Nodes[i], conf.Jwts[i], func() {})
 			if err != nil {
@@ -110,15 +113,38 @@ func fuzzPreparePayload(fuzzer *fuzz.Fuzzer, engine merge.Engine) int {
 	fuzzer.Fuzz(&feeRecipient)
 	fuzzer.Fuzz(&payloadID)
 	heads := beacon.ForkchoiceStateV1{HeadBlockHash: parentHash, SafeBlockHash: parentHash, FinalizedBlockHash: parentHash}
-	attributes := beacon.PayloadAttributesV1{Timestamp: timestamp, Random: random, SuggestedFeeRecipient: feeRecipient}
-	engine.ForkchoiceUpdatedV1(heads, &attributes)
+	withdrawals := fuzzWithdrawals(fuzzer)
+	attributes := beacon.PayloadAttributes{Timestamp: timestamp, Random: random, SuggestedFeeRecipient: feeRecipient, Withdrawals: withdrawals}
+	engine.ForkchoiceUpdatedV2(heads, &attributes)
 	return 0
+}
+
+func fuzzWithdrawals(fuzzer *fuzz.Fuzzer) types.Withdrawals {
+	var cnt byte
+	fuzzer.Fuzz(&cnt)
+	out := make([]*types.Withdrawal, 0)
+	for i := 0; i < int(cnt); i++ {
+		var (
+			index      uint64
+			validator  uint64
+			receipient common.Address
+			amount     [32]byte
+		)
+		fuzzer.Fuzz(&index)
+		fuzzer.Fuzz(&validator)
+		fuzzer.Fuzz(&receipient)
+		fuzzer.Fuzz(&amount)
+
+		withdrawal := types.Withdrawal{Index: index, Validator: validator, Address: receipient, Amount: new(big.Int).SetBytes(amount[:])}
+		out = append(out, &withdrawal)
+	}
+	return types.Withdrawals(out)
 }
 
 func fuzzGetPayload(fuzzer *fuzz.Fuzzer, engine merge.Engine) int {
 	var payloadID beacon.PayloadID
 	fuzzer.Fuzz(&payloadID)
-	payload, err := engine.GetPayloadV1(payloadID)
+	payload, err := engine.GetPayloadV2(payloadID)
 	if err != nil {
 		return 0
 	}
@@ -128,7 +154,7 @@ func fuzzGetPayload(fuzzer *fuzz.Fuzzer, engine merge.Engine) int {
 
 func fuzzExecutePayload(fuzzer *fuzz.Fuzzer, engine merge.Engine) int {
 	payload := fillExecPayload(fuzzer)
-	_, err := engine.NewPayloadV1(payload)
+	_, err := engine.NewPayloadV2(payload)
 	if err != nil {
 		return 1
 	}
@@ -144,7 +170,7 @@ func fuzzForkchoiceUpdated(fuzzer *fuzz.Fuzzer, engine merge.Engine) int {
 	fuzzer.Fuzz(&headBlockHash)
 	fuzzer.Fuzz(&safeBlockHash)
 	fuzzer.Fuzz(&finalizedBlockHash)
-	_, err := engine.ForkchoiceUpdatedV1(beacon.ForkchoiceStateV1{HeadBlockHash: headBlockHash, SafeBlockHash: safeBlockHash, FinalizedBlockHash: finalizedBlockHash}, nil)
+	_, err := engine.ForkchoiceUpdatedV2(beacon.ForkchoiceStateV1{HeadBlockHash: headBlockHash, SafeBlockHash: safeBlockHash, FinalizedBlockHash: finalizedBlockHash}, nil)
 	if err == nil {
 		return 1
 	}
@@ -153,16 +179,16 @@ func fuzzForkchoiceUpdated(fuzzer *fuzz.Fuzzer, engine merge.Engine) int {
 
 func fuzzSetHead(engine merge.Engine) int {
 	head, _ := engine.GetHead()
-	_, err := engine.ForkchoiceUpdatedV1(beacon.ForkchoiceStateV1{HeadBlockHash: head, SafeBlockHash: head, FinalizedBlockHash: head}, nil)
+	_, err := engine.ForkchoiceUpdatedV2(beacon.ForkchoiceStateV1{HeadBlockHash: head, SafeBlockHash: head, FinalizedBlockHash: head}, nil)
 	if err == nil {
 		return 1
 	}
 	return 0
 }
 
-func fillExecPayload(fuzzer *fuzz.Fuzzer) beacon.ExecutableDataV1 {
+func fillExecPayload(fuzzer *fuzz.Fuzzer) beacon.ExecutableData {
 	var (
-		payload    beacon.ExecutableDataV1
+		payload    beacon.ExecutableData
 		realHash   bool
 		basefee    int64
 		fillerData = make([]byte, 128)
@@ -177,7 +203,7 @@ func fillExecPayload(fuzzer *fuzz.Fuzzer) beacon.ExecutableDataV1 {
 		f := filler.NewFiller(fillerData)
 		node := engines[1].(*merge.RPCnode)
 		for i := 0; i < int(txLen); i++ {
-			tx, err := txfuzz.RandomValidTx(node.Node, f, payload.FeeRecipient, 0, big.NewInt(0), nil, false)
+			tx, err := txfuzz.RandomValidTx(node.Node, f, payload.FeeRecipient, 0, big.NewInt(0), nil, true)
 			if err != nil {
 				fmt.Println(err)
 				continue

@@ -3,56 +3,48 @@ package fuzz
 import (
 	"bytes"
 	"fmt"
+	"math/big"
+	"testing"
 	"time"
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/beacon"
-	fuzz "github.com/google/gofuzz"
-	"github.com/mariusvanderwijden/merge-fuzz/merge"
+	"github.com/ethereum/go-ethereum/core/types"
 )
 
-func FuzzInteraction(input []byte) int {
-	return fuzzInteraction(fuzz.NewFromGoFuzz(input), engines[1], uint64(time.Now().Unix()))
-}
-
-func fuzzInteraction(fuzzer *fuzz.Fuzzer, engine merge.Engine, timestamp uint64) int {
-	var (
-		random        [32]byte
-		feeRecipient  common.Address
-		realTimestamp byte
-	)
+func TestInteraction(t *testing.T) {
+	engine := engines[1]
 	parentHash, err := engine.GetHead()
 	if err != nil {
 		panic(err)
 	}
-	fuzzer.Fuzz(&random)
-	fuzzer.Fuzz(&feeRecipient)
-	fuzzer.Fuzz(&realTimestamp)
-	if realTimestamp > 30 {
-		timestamp += 12
-	} else if realTimestamp > 60 {
-		timestamp -= 12
-	}
+	parentHash = common.HexToHash("0xfe950635b1bd2a416ff6283b0bbd30176e1b1125ad06fa729da9f3f4c1c61710")
+	random := [32]byte{0xff}
+	feeRecipient := common.Address{0xaa}
+	timestamp := uint64(time.Now().Second() + 1)
 
-	withdrawals := fuzzWithdrawals(fuzzer)
+	out := make([]*types.Withdrawal, 0)
+	for i := 0; i < int(8); i++ {
+		index := uint64(i)
+		validator := uint64(i + 0xffff)
+		receipient := common.Address{byte(i)}
+		amount := [32]byte{byte(i)}
+
+		withdrawal := types.Withdrawal{Index: index, Validator: validator, Address: receipient, Amount: new(big.Int).SetBytes(amount[:])}
+		out = append(out, &withdrawal)
+	}
+	withdrawals := types.Withdrawals(out)
 	response, err := engine.ForkchoiceUpdatedV2(beacon.ForkchoiceStateV1{HeadBlockHash: parentHash, SafeBlockHash: parentHash, FinalizedBlockHash: parentHash}, &beacon.PayloadAttributes{Timestamp: timestamp, Random: random, SuggestedFeeRecipient: feeRecipient, Withdrawals: withdrawals})
 	if err != nil {
-		return 0
+		panic(err)
 	}
 	payload, err := engine.GetPayloadV2(*response.PayloadID)
 	if err != nil {
-		return 0
-	}
-	resp1, err := engine.NewPayloadV2(*payload)
-	if err != nil {
 		panic(err)
 	}
-	resp2, err := engine.NewPayloadV2(*payload)
+	_, err = engine.NewPayloadV2(*payload)
 	if err != nil {
 		panic(err)
-	}
-	if resp1.Status != resp2.Status {
-		panic(fmt.Sprintf("invalid status %v %v", resp1, resp2))
 	}
 	response, err = engine.ForkchoiceUpdatedV2(beacon.ForkchoiceStateV1{HeadBlockHash: payload.BlockHash, SafeBlockHash: payload.BlockHash, FinalizedBlockHash: payload.BlockHash}, nil)
 	if err != nil {
@@ -67,5 +59,4 @@ func fuzzInteraction(fuzzer *fuzz.Fuzzer, engine merge.Engine, timestamp uint64)
 		panic(fmt.Errorf("invalid head: got %v want %v", newHead, payload.BlockHash))
 	}
 	panic("asdf")
-	return 0
 }

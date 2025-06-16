@@ -1,6 +1,7 @@
 package merge
 
 import (
+	"fmt"
 	"time"
 
 	"github.com/ethereum/go-ethereum/common"
@@ -30,24 +31,60 @@ func issueToken(secret []byte) string {
 	return ss
 }
 
-func (n *RPCnode) ForkchoiceUpdatedV1(heads beacon.ForkchoiceStateV1, PayloadAttributes *beacon.PayloadAttributesV1) (beacon.ForkChoiceResponse, error) {
+func (n *RPCnode) ForkchoiceUpdatedV1(heads beacon.ForkchoiceStateV1, PayloadAttributes *beacon.PayloadAttributes) (beacon.ForkChoiceResponse, error) {
 	var res beacon.ForkChoiceResponse
 	n.Node.SetHeader("Authorization", "Bearer "+issueToken(n.Jwt))
 	err := n.Node.Call(&res, "engine_forkchoiceUpdatedV1", heads, PayloadAttributes)
 	return res, err
 }
 
-func (n *RPCnode) NewPayloadV1(params beacon.ExecutableDataV1) (beacon.PayloadStatusV1, error) {
+func (n *RPCnode) ForkchoiceUpdatedV2(heads beacon.ForkchoiceStateV1, PayloadAttributes *beacon.PayloadAttributes) (beacon.ForkChoiceResponse, error) {
+	var res beacon.ForkChoiceResponse
+	n.Node.SetHeader("Authorization", "Bearer "+issueToken(n.Jwt))
+	fmt.Println("FCU")
+	fmt.Printf("%+v\n", heads)
+	fmt.Printf("%+v\n", PayloadAttributes)
+	if PayloadAttributes != nil {
+		fmt.Println("Withdrawals")
+		for _, w := range PayloadAttributes.Withdrawals {
+			fmt.Printf("%+v", w)
+		}
+		fmt.Println()
+	}
+	err := n.Node.Call(&res, "engine_forkchoiceUpdatedV2", heads, PayloadAttributes)
+	fmt.Printf("%+v\n", res)
+	return res, err
+}
+
+func (n *RPCnode) NewPayloadV1(params beacon.ExecutableData) (beacon.PayloadStatusV1, error) {
 	var res beacon.PayloadStatusV1
 	n.Node.SetHeader("Authorization", "Bearer "+issueToken(n.Jwt))
 	err := n.Node.Call(&res, "engine_newPayloadV1", params)
 	return res, err
 }
 
-func (n *RPCnode) GetPayloadV1(payloadID beacon.PayloadID) (*beacon.ExecutableDataV1, error) {
-	var res beacon.ExecutableDataV1
+func (n *RPCnode) GetPayloadV1(payloadID beacon.PayloadID) (*beacon.ExecutableData, error) {
+	var res beacon.ExecutableData
 	n.Node.SetHeader("Authorization", "Bearer "+issueToken(n.Jwt))
 	err := n.Node.Call(&res, "engine_getPayloadV1", payloadID)
+	return &res, err
+}
+
+func (n *RPCnode) NewPayloadV2(params beacon.ExecutableData) (beacon.PayloadStatusV1, error) {
+	var res beacon.PayloadStatusV1
+	n.Node.SetHeader("Authorization", "Bearer "+issueToken(n.Jwt))
+	fmt.Printf("%+v\n", params)
+	err := n.Node.Call(&res, "engine_newPayloadV2", params)
+	fmt.Printf("%+v\n", res)
+	return res, err
+}
+
+func (n *RPCnode) GetPayloadV2(payloadID beacon.PayloadID) (*beacon.ExecutableData, error) {
+	var res beacon.ExecutableData
+	fmt.Printf("%+v\n", payloadID)
+	n.Node.SetHeader("Authorization", "Bearer "+issueToken(n.Jwt))
+	err := n.Node.Call(&res, "engine_getPayloadV2", payloadID)
+	fmt.Printf("%+v\n", res)
 	return &res, err
 }
 
